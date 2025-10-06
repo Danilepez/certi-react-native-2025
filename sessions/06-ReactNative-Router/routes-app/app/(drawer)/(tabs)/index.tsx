@@ -1,8 +1,9 @@
 import React from 'react';
-import { Link, Stack } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Link, Stack, router } from 'expo-router';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useAuthStore } from '../../store/useAuthStore';
 import type { ThemeColors } from '../../theme/colors';
 
 const createStyles = (colors: ThemeColors) =>
@@ -32,11 +33,29 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: 16,
       marginBottom: 12,
     },
+    logoutButton: {
+      backgroundColor: colors.primary,
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      borderRadius: 8,
+      marginTop: 20,
+    },
+    logoutText: {
+      color: 'white',
+      fontSize: 16,
+      fontWeight: '600',
+    },
   });
 
 export default function DashboardScreen() {
   const { colors } = useThemeColors();
   const styles = React.useMemo(() => createStyles(colors), [colors]);
+  const { logout } = useAuthStore();
+
+  const handleLogout = () => {
+    logout();
+    router.replace('/auth');
+  };
 
   return (
     <View style={styles.container}>
@@ -49,6 +68,10 @@ export default function DashboardScreen() {
       <Link href="/dashboard" style={styles.link}>
         Ir al Dashboard →
       </Link>
+
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Text style={styles.logoutText}>Cerrar sesión</Text>
+      </TouchableOpacity>
     </View>
   );
 }
