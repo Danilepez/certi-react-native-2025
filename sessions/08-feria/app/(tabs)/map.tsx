@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
-import { StyleSheet, ActivityIndicator, View, Platform, Alert, Text } from 'react-native';
+import { StyleSheet, ActivityIndicator, View, Platform, Alert, Text, Modal } from 'react-native';
 import MapView, { Marker, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,12 +13,16 @@ import { Filters } from '../../src/components/Filters';
 import { CATEGORIES, CategoryFilter } from '../../src/data/categories';
 import { CATEGORY_COLORS } from '../../src/data/colors';
 import { useVendorStore } from '../../src/store/vendorStore';
+import { Vendor } from '../../src/types';
+import { VendorBottomSheet } from '../../src/components/VendorBottomSheet';
 
 export default function MapScreen() {
   const mapRef = useRef<MapView>(null);
   const { location, setLocation, loading } = useLocation();
   const { centerOn } = useMapCamera(mapRef);
 
+  const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
+  const [showModal, setShowModal] = useState(false);
   const [jumping, setJumping] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [categories, setCategories] = useState<CategoryFilter[]>(() =>
@@ -104,6 +108,15 @@ export default function MapScreen() {
 
   if (loading) return <ActivityIndicator style={{ flex: 1 }} size="large" />;
 
+  const selectVendor = (vendor: Vendor) => {
+    setSelectedVendor(vendor);
+    setShowModal(true);
+  };
+
+  const closeVendorModal = () => {
+    setShowModal(false);
+    setSelectedVendor(null);
+  };
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.container}>
@@ -130,6 +143,7 @@ export default function MapScreen() {
               title={vendor.name}
               description={vendor.description}
               pinColor={CATEGORY_COLORS[vendor.category]}
+              onPress={() => { selectVendor(vendor) }}
             />
           ))}
         </MapView>
@@ -161,6 +175,14 @@ export default function MapScreen() {
             </Text>
           )}
         </Search>
+        <Modal
+          animationType="fade"
+          transparent
+          visible={showModal}
+          onRequestClose={closeVendorModal}
+        >
+          <VendorBottomSheet vendor={selectedVendor} visible={showModal} onClose={closeVendorModal} />
+        </Modal>
         <GoToLocationFab goToMyLocation={goToMyLocation} jumping={jumping} />
       </View>
     </SafeAreaView>
@@ -210,5 +232,5 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 12,
     color: '#94a3b8'
-  }
+  },
 });
