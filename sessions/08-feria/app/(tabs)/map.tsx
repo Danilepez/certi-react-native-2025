@@ -3,6 +3,8 @@ import { StyleSheet, ActivityIndicator, View, Platform, Alert, Text, Modal } fro
 import MapView, { Marker, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { getAuth, signOut } from 'firebase/auth';
+import { useRouter } from 'expo-router';
 
 import { Search } from '../../src/components/Search';
 import { SearchBar } from '../../src/components/SearchBar';
@@ -18,6 +20,8 @@ import { VendorBottomSheet } from '../../src/components/VendorBottomSheet';
 
 export default function MapScreen() {
   const mapRef = useRef<MapView>(null);
+  const router = useRouter();
+  const auth = getAuth();
   const { location, setLocation, loading } = useLocation();
   const { centerOn } = useMapCamera(mapRef);
 
