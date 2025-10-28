@@ -1,99 +1,78 @@
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
     StyleSheet,
-    Switch,
     Text,
     TextInput,
     View,
-    Pressable
+    Pressable,
+    ActivityIndicator,
+    Alert
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { emailSignIn, resetPassword } from "../services/loginEmail";
-import { createUserByUid, getUserByUid } from "../services/userService";
-import { useOnboardingStore } from "../store/onboardingStore";
+import { router } from "expo-router";
+import { emailSignUp } from "../services/loginEmail";
+import { createUserByUid } from "../services/userService";
 
-export const LoginScreen: React.FC = () => {
-    const router = useRouter();
-    const { resetOnboarding } = useOnboardingStore();
+export const SignUpScreen: React.FC = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [rememberMe, setRememberMe] = useState(false);
+    const [confirmPassword, setConfirmPassword] = useState("");
     const [secureEntry, setSecureEntry] = useState(true);
+    const [secureConfirmEntry, setSecureConfirmEntry] = useState(true);
     const [message, setMessage] = useState<string | null>(null);
     const [messageTone, setMessageTone] = useState<"error" | "success">("error");
     const [submitting, setSubmitting] = useState(false);
 
-    const handleLogin = async () => {
-        if (submitting) return;
+    const handleSignUp = async () => {
+        if (submitting) {
+            return;
+        }
+        setMessage(null);
 
         const trimmedEmail = email.trim();
-        if (!trimmedEmail || !password) {
+        if (!trimmedEmail || !password || !confirmPassword) {
             setMessageTone("error");
-            setMessage("Ingresa tu correo y contraseña.");
+            setMessage("Todos los campos son obligatorios.");
             return;
         }
 
-        setMessage(null);
+        if (password !== confirmPassword) {
+            setMessageTone("error");
+            setMessage("Las contraseñas no coinciden.");
+            return;
+        }
+
         try {
             setSubmitting(true);
-            const { user } = await emailSignIn(trimmedEmail, password);
-            const existingProfile = await getUserByUid(user.uid);
-            if (!existingProfile) {
-                await createUserByUid({ uid: user.uid, email: user.email ?? trimmedEmail, role: "client" });
-                console.info(`[Auth] Perfil creado para ${user.email ?? trimmedEmail} con rol client.`);
-            } else {
-                console.info(
-                    `[Auth] Perfil existente detectado para ${user.email ?? trimmedEmail} con rol ${existingProfile.role ?? "client"}.`
-                );
-            }
+            const credential = await emailSignUp(trimmedEmail, password);
+            await createUserByUid({
+                uid: credential.user.uid,
+                email: credential.user.email ?? trimmedEmail,
+                role: "client"
+            });
+            setMessageTone("success");
+            setMessage("Cuenta creada con éxito.");
             router.replace("/map");
-        } catch (e: any) {
+        } catch (error: any) {
+            const errorMessage = error?.message ?? "No se pudo crear la cuenta.";
             setMessageTone("error");
-            setMessage(e?.message ?? "No se pudo iniciar sesión.");
-            console.error("Login error", e);
+            setMessage(errorMessage);
         } finally {
             setSubmitting(false);
         }
     };
 
-    const handleForgotPassword = async () => {
-        const trimmedEmail = email.trim();
-        if (!trimmedEmail) {
-            Alert.alert("Ingresa tu correo", "Necesitamos tu email para enviarte el enlace.");
+    const goToLogin = () => {
+        if (submitting) {
+            Alert.alert("Espera", "Estamos creando tu cuenta.");
             return;
         }
-        try {
-            await resetPassword(trimmedEmail);
-            setMessageTone("success");
-            setMessage("Te enviamos un correo para restablecer tu contraseña.");
-        } catch (error: any) {
-            setMessageTone("error");
-            setMessage(error?.message ?? "No pudimos enviar el correo de recuperación.");
-        }
-    };
-
-    const goToSignUp = () => {
-        if (submitting) return;
-        router.push("/signup");
-    };
-
-    const handleClearOnboarding = () => {
-        resetOnboarding();
-        Alert.alert("Storage limpiado", "El onboarding se mostrará la próxima vez que abras la app.");
-    };
-
-    const handleCheckStorage = async () => {
-        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-        const value = await AsyncStorage.getItem('onboarding-storage');
-        Alert.alert("Estado del Storage", `onboarding-storage: ${value || 'null/vacío'}`);
+        router.back();
     };
 
     return (
@@ -121,7 +100,7 @@ export const LoginScreen: React.FC = () => {
                             </View>
                             <View style={styles.formSection}>
                                 <View style={styles.formWrapper}>
-                                    <Text style={styles.title}>Sign in</Text>
+                                    <Text style={styles.title}>Crear cuenta</Text>
                                     <View style={styles.titleAccent} />
                                     <View style={styles.fieldContainer}>
                                         <Text style={styles.label}>Email</Text>
@@ -131,7 +110,7 @@ export const LoginScreen: React.FC = () => {
                                                 style={styles.input}
                                                 value={email}
                                                 onChangeText={setEmail}
-                                                placeholder="demo@email.com"
+                                                placeholder="tucorreo@email.com"
                                                 placeholderTextColor="#cbd5f5"
                                                 keyboardType="email-address"
                                                 autoCapitalize="none"
@@ -140,14 +119,14 @@ export const LoginScreen: React.FC = () => {
                                         </View>
                                     </View>
                                     <View style={styles.fieldContainer}>
-                                        <Text style={styles.label}>Password</Text>
+                                        <Text style={styles.label}>Contraseña</Text>
                                         <View style={styles.inputWrapper}>
                                             <Ionicons name="lock-closed-outline" size={18} color="#f9738f" />
                                             <TextInput
                                                 style={styles.input}
                                                 value={password}
                                                 onChangeText={setPassword}
-                                                placeholder="Enter your password"
+                                                placeholder="Crea tu contraseña"
                                                 placeholderTextColor="#cbd5f5"
                                                 secureTextEntry={secureEntry}
                                                 textContentType="password"
@@ -164,66 +143,55 @@ export const LoginScreen: React.FC = () => {
                                             </Pressable>
                                         </View>
                                     </View>
+                                    <View style={styles.fieldContainer}>
+                                        <Text style={styles.label}>Confirmar contraseña</Text>
+                                        <View style={styles.inputWrapper}>
+                                            <Ionicons name="shield-checkmark-outline" size={18} color="#f9738f" />
+                                            <TextInput
+                                                style={styles.input}
+                                                value={confirmPassword}
+                                                onChangeText={setConfirmPassword}
+                                                placeholder="Repite tu contraseña"
+                                                placeholderTextColor="#cbd5f5"
+                                                secureTextEntry={secureConfirmEntry}
+                                            />
+                                            <Pressable
+                                                onPress={() => setSecureConfirmEntry((prev) => !prev)}
+                                                hitSlop={8}
+                                            >
+                                                <Ionicons
+                                                    name={secureConfirmEntry ? "eye-off-outline" : "eye-outline"}
+                                                    size={18}
+                                                    color="#f9738f"
+                                                />
+                                            </Pressable>
+                                        </View>
+                                    </View>
                                     {message && (
                                         <Text
                                             style={[
                                                 styles.feedback,
-                                                messageTone === "error"
-                                                    ? styles.feedbackError
-                                                    : styles.feedbackSuccess
+                                                messageTone === "error" ? styles.feedbackError : styles.feedbackSuccess
                                             ]}
                                         >
                                             {message}
                                         </Text>
                                     )}
-                                    <View style={styles.rememberRow}>
-                                        <View style={styles.rememberToggle}>
-                                            <Switch
-                                                value={rememberMe}
-                                                onValueChange={setRememberMe}
-                                                trackColor={{ false: "#f1f5f9", true: "#f9738f" }}
-                                                thumbColor={rememberMe ? "#fef2f8" : "#ffffff"}
-                                            />
-                                            <Text style={styles.rememberLabel}>Remember Me</Text>
-                                        </View>
-                                        <Pressable onPress={handleForgotPassword} disabled={submitting}>
-                                            <Text style={styles.linkMuted}>Forgot Password?</Text>
-                                        </Pressable>
-                                    </View>
                                     <Pressable
-                                        style={[styles.loginButton, submitting && styles.loginButtonDisabled]}
-                                        onPress={handleLogin}
+                                        style={[styles.actionButton, submitting && styles.actionButtonDisabled]}
+                                        onPress={handleSignUp}
                                         disabled={submitting}
                                     >
                                         {submitting ? (
                                             <ActivityIndicator color="#ffffff" />
                                         ) : (
-                                            <Text style={styles.loginButtonLabel}>Login</Text>
+                                            <Text style={styles.actionLabel}>Crear cuenta</Text>
                                         )}
                                     </Pressable>
-                                    
-                                    {/* Botón de prueba para limpiar onboarding */}
-                                    <Pressable
-                                        style={styles.debugButton}
-                                        onPress={handleClearOnboarding}
-                                    >
-                                        <Ionicons name="refresh-outline" size={16} color="#666" />
-                                        <Text style={styles.debugButtonLabel}>Limpiar Onboarding (Dev)</Text>
-                                    </Pressable>
-
-                                    {/* Botón para ver estado del storage */}
-                                    <Pressable
-                                        style={[styles.debugButton, { marginBottom: 24 }]}
-                                        onPress={handleCheckStorage}
-                                    >
-                                        <Ionicons name="eye-outline" size={16} color="#666" />
-                                        <Text style={styles.debugButtonLabel}>Ver Storage (Dev)</Text>
-                                    </Pressable>
-
                                     <View style={styles.footerRow}>
-                                        <Text style={styles.footerText}>Don’t have an account?</Text>
-                                        <Pressable onPress={goToSignUp}>
-                                            <Text style={styles.linkPrimary}> Sign up</Text>
+                                        <Text style={styles.footerText}>¿Ya tienes una cuenta?</Text>
+                                        <Pressable onPress={goToLogin}>
+                                            <Text style={styles.linkPrimary}> Inicia sesión</Text>
                                         </Pressable>
                                     </View>
                                 </View>
@@ -273,7 +241,8 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 32,
         backgroundColor: "#ffffff",
         paddingHorizontal: 24,
-        paddingVertical: 32
+        paddingVertical: 32,
+        gap: 20
     },
     title: {
         fontSize: 28,
@@ -285,17 +254,15 @@ const styles = StyleSheet.create({
         height: 4,
         borderRadius: 999,
         backgroundColor: "#f9738f",
-        marginTop: 8,
-        marginBottom: 24
+        marginTop: 8
     },
     fieldContainer: {
-        marginBottom: 20
+        gap: 8
     },
     label: {
         fontSize: 15,
         fontWeight: "600",
-        color: "#111827",
-        marginBottom: 8
+        color: "#111827"
     },
     inputWrapper: {
         flexDirection: "row",
@@ -313,69 +280,36 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: "#1f2937"
     },
-    rememberRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: 28
-    },
-    rememberToggle: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 10
-    },
-    rememberLabel: {
+    feedback: {
         fontSize: 14,
-        color: "#111827",
-        fontWeight: "500"
+        textAlign: "center"
     },
-    linkMuted: {
-        fontSize: 14,
-        color: "#f9738f",
-        fontWeight: "600"
+    feedbackError: {
+        color: "#dc2626"
     },
-    loginButton: {
+    feedbackSuccess: {
+        color: "#16a34a"
+    },
+    actionButton: {
+        marginTop: 8,
+        borderRadius: 999,
         backgroundColor: "#f9738f",
-        borderRadius: 18,
-        paddingVertical: 16,
-        alignItems: "center",
-        shadowColor: "#f9738f",
-        shadowOpacity: 0.35,
-        shadowOffset: { width: 0, height: 8 },
-        shadowRadius: 12,
-        elevation: 4,
-        marginBottom: 24
+        paddingVertical: 14,
+        alignItems: "center"
     },
-    loginButtonDisabled: {
-        opacity: 0.7
+    actionButtonDisabled: {
+        opacity: 0.6
     },
-    loginButtonLabel: {
-        color: "#ffffff",
+    actionLabel: {
         fontSize: 16,
-        fontWeight: "700"
-    },
-    debugButton: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "#f3f4f6",
-        borderRadius: 12,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        marginBottom: 20,
-        borderWidth: 1,
-        borderColor: "#d1d5db",
-        gap: 8
-    },
-    debugButtonLabel: {
-        color: "#666",
-        fontSize: 13,
-        fontWeight: "600"
+        fontWeight: "600",
+        color: "#ffffff"
     },
     footerRow: {
         flexDirection: "row",
         justifyContent: "center",
-        alignItems: "center"
+        alignItems: "center",
+        marginTop: 12
     },
     footerText: {
         fontSize: 14,
@@ -385,16 +319,5 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: "#f9738f",
         fontWeight: "600"
-    },
-    feedback: {
-        fontSize: 14,
-        marginBottom: 16,
-        textAlign: "center"
-    },
-    feedbackError: {
-        color: "#dc2626"
-    },
-    feedbackSuccess: {
-        color: "#16a34a"
     }
 });

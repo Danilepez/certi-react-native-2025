@@ -9,6 +9,11 @@ type VendorStore = {
   dislikeVendor: (id: string) => void;
 };
 
+type OnboardingStore = {
+  hasOnb: boolean;
+  setHasOnb: (value: boolean) => void;
+};
+
 export const useVendorStore = create<VendorStore>((set) => ({
   vendors: VENDORS.map((vendor) => ({ ...vendor, liked: vendor.liked ?? false })),
   setVendor: (payload) => set(() => ({ vendors: payload.map((item) => ({ ...item })) })),

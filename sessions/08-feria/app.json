@@ -8,7 +8,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -21,14 +21,12 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.x08feria"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "pluging": [
-      "expo-router"
-    ],
     "plugins": [
       "expo-router",
       "expo-web-browser"
